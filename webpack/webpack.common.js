@@ -40,6 +40,7 @@ module.exports = {
     new ESLintPlugin({
       extensions: ["ts", "tsx", "js"],
       emitWarning: true,
+      exclude: ["node_modules", "webpack"],
     }),
   ],
   devServer: {

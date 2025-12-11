@@ -8,7 +8,8 @@
     }
   },
   "env": {
-    "browser": true
+    "browser": true,
+    "node": true
   },
   "extends": [
     "plugin:react/recommended", 
@@ -18,5 +19,19 @@
     "react":  {
       "version": "detect"  // Tells eslint-plugin-react to automatically detect the version of React to use
     }
-  }
+  },
+  "rules": {
+    "@typescript-eslint/no-var-requires": "off"
+  },
+  "overrides": [
+    {
+      "files": ["webpack/**/*.js"],
+      "rules": {
+        "@typescript-eslint/no-var-requires": "off"
+      },
+      "parserOptions": {
+        "sourceType": "script"
+      }
+    }
+  ]
 }
