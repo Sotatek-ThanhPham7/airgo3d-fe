@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/camelcase */
 const { merge } = require('webpack-merge')
 const common = require('./webpack.common.js')
 const TerserPlugin = require('terser-webpack-plugin')
+
 module.exports = merge(common, {
   mode: "production",
+  // NODE_ENV is automatically set to "production" by webpack when mode: "production"
   plugins: [
     ...common.plugins
   ],

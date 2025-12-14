@@ -2,6 +2,7 @@ const path = require("path");
 const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
+const Dotenv = require("dotenv-webpack");
 
 const BUILD_DIR = path.resolve(__dirname, "../build");
 const SRC_DIR = path.resolve(__dirname, "../src");
@@ -33,6 +34,13 @@ module.exports = {
     ],
   },
   plugins: [
+    new Dotenv({
+      // Automatically loads .env file from root
+      // Override with .env.production or .env.development if they exist
+      safe: false, // Set to true to use .env.example as template
+      systemvars: true, // Load system environment variables (takes precedence)
+      defaults: false, // Load .env.defaults if it exists
+    }),
     new HtmlWebpackPlugin({
       inject: true,
       template: path.join(__dirname, "../public/index.html"),
@@ -50,7 +58,7 @@ module.exports = {
     hot: true,
     historyApiFallback: true,
     host: "0.0.0.0",
-    port: 3000,
+    port: 3001,
     open: true,
     client: {
       overlay: true,
