@@ -1,7 +1,16 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
 
-// Base API URL - can be configured via environment variables
 const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/api";
+
+export const S3_BASE_URL =
+  process.env.REACT_APP_S3_BASE_URL ||
+  "https://airgo3d.s3.ap-southeast-1.amazonaws.com";
+
+export const getImageUrl = (filePath: string): string => {
+  if (!filePath) return "";
+  const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+  return `${S3_BASE_URL}/${cleanPath}`;
+};
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -11,15 +20,16 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor - Logging, etc.
 apiClient.interceptors.request.use(
   (config) => {
-    // Log request in development
     if (process.env.NODE_ENV === "development") {
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-        data: config.data,
-        params: config.params,
-      });
+      console.log(
+        `[API Request] ${config.method?.toUpperCase()} ${config.url}`,
+        {
+          data: config.data,
+          params: config.params,
+        }
+      );
     }
 
     return config;
@@ -30,23 +40,24 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors globally
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Log response in development
     if (process.env.NODE_ENV === "development") {
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
-        status: response.status,
-        data: response.data,
-      });
+      console.log(
+        `[API Response] ${response.config.method?.toUpperCase()} ${
+          response.config.url
+        }`,
+        {
+          status: response.status,
+          data: response.data,
+        }
+      );
     }
 
     return response;
   },
   (error) => {
-    // Handle common errors
     if (error.response) {
-      // Server responded with error status
       const { status, data } = error.response;
 
       switch (status) {
@@ -66,21 +77,18 @@ apiClient.interceptors.response.use(
           console.error(`[API Error] ${status}:`, data);
       }
 
-      // Return a structured error
       return Promise.reject({
         status,
         message: data?.message || error.message,
         data: data,
       });
     } else if (error.request) {
-      // Request made but no response received
       console.error("[API Error] No response received:", error.request);
       return Promise.reject({
         status: 0,
         message: "Network error. Please check your connection.",
       });
     } else {
-      // Something else happened
       console.error("[API Error]", error.message);
       return Promise.reject({
         status: 0,
@@ -91,4 +99,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-

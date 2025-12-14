@@ -1,4 +1,3 @@
-// Common API response types
 export interface ApiResponse<T> {
   data: T;
   message?: string;
@@ -10,13 +9,11 @@ export interface ApiError {
   message: string;
 }
 
-// Pagination types
 export interface PaginationParams {
   page: number;
   limit: number;
 }
 
-// API response with pagination (data + pagination structure)
 export interface PaginatedApiResponse<T> {
   data: T[];
   pagination: {

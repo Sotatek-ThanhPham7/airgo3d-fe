@@ -1,5 +1,23 @@
-html
+@import "tailwindcss";
+
+html,
 body {
   height: 100%;
   width: 100%;
+}
+
+.ant-card-cover img,
+.ant-card-cover .ant-image,
+.ant-card-cover .ant-image-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.ant-card-cover {
+  margin: 0 !important;
+  padding: 0 !important;
 }

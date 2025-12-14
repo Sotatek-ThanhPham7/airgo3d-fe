@@ -20,22 +20,21 @@ export interface Panorama {
   tags: PanoramaTag[];
 }
 
-// Query parameters for getPanoramas
 export interface GetPanoramasParams {
   page?: number;
   limit?: number;
   isBookmarked?: boolean;
   search?: string;
-  tags?: string[]; // Array of tag names
+  tags?: string[];
 }
 
-// Panorama API service
+export interface GetTagSuggestionsParams {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const panoramaApi = {
-  /**
-   * Get panoramas with pagination and filters
-   * @param params Query parameters
-   * @returns Promise with panoramas and pagination info
-   */
   getPanoramas: async (
     params?: GetPanoramasParams
   ): Promise<PaginatedApiResponse<Panorama>> => {
@@ -47,8 +46,23 @@ export const panoramaApi = {
           limit: params?.limit ?? 10,
           isBookmarked: params?.isBookmarked,
           search: params?.search,
-          // Handle tags array - axios will serialize it as tags=value1&tags=value2
           tags: params?.tags,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  getTagSuggestions: async (
+    params?: GetTagSuggestionsParams
+  ): Promise<PaginatedApiResponse<PanoramaTag>> => {
+    const response = await apiClient.get<PaginatedApiResponse<PanoramaTag>>(
+      "/tags/suggest",
+      {
+        params: {
+          q: params?.q ?? "",
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 10,
         },
       }
     );
