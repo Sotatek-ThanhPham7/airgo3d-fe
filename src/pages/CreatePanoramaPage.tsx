@@ -12,9 +12,10 @@ import {
   Progress,
   message,
 } from "antd";
-import type { RcFile } from "antd/es/upload";
+import type { RcFile, UploadFile } from "antd/es/upload";
 import { InboxOutlined } from "@ant-design/icons";
 import { s3Api, panoramaApi } from "../services/api";
+import { generateThumbnailBlob } from "../utils/imageHandler";
 
 const { Title, Paragraph } = Typography;
 const { Dragger } = Upload;
@@ -47,50 +48,116 @@ const CreatePanoramaPage: React.FC = () => {
       setSubmitting(true);
       setUploadProgress(10);
 
-      // 1. Get presigned URL
-      const presigned = await s3Api.getPresignedUrl({
-        fileName: file.name,
-        contentType: file.type || "application/octet-stream",
-        prefix: "images",
-      });
-      setUploadProgress(40);
+      const originalContentType = file.type || "application/octet-stream";
 
-      // 2. Upload file via presigned URL
-      const uploadResponse = await fetch(presigned.url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
+      const thumbnailFileName = `${file.name.replace(
+        /\.[^/.]+$/,
+        ""
+      )}-thumb.jpg`;
 
-      if (!uploadResponse.ok) {
+      // 1. Request presigned URLs in parallel
+      const [originalPresigned, thumbnailPresigned] = await Promise.all([
+        s3Api.getPresignedUrl({
+          fileName: file.name,
+          contentType: originalContentType,
+          prefix: "images",
+        }),
+        s3Api.getPresignedUrl({
+          fileName: thumbnailFileName,
+          contentType: "image/jpeg",
+          prefix: "thumbnails",
+        }),
+      ]);
+
+      setUploadProgress(25);
+
+      // 2. Upload original image and generate thumbnail in parallel
+      const [originalUploadResult, thumbnailBlobResult] =
+        await Promise.allSettled([
+          fetch(originalPresigned.url, {
+            method: "PUT",
+            headers: {
+              "Content-Type": originalContentType,
+            },
+            body: file,
+          }),
+          generateThumbnailBlob(file),
+        ]);
+
+      if (
+        originalUploadResult.status !== "fulfilled" ||
+        !originalUploadResult.value.ok
+      ) {
         throw new Error("Failed to upload file to storage.");
       }
 
-      setUploadProgress(80);
+      setUploadProgress(60);
 
-      // 3. Create panorama metadata
+      // 3. Upload thumbnail if generation succeeded
+      let thumbnailPath: string | undefined;
+
+      if (thumbnailBlobResult.status === "fulfilled") {
+        try {
+          const thumbnailUploadResponse = await fetch(thumbnailPresigned.url, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "image/jpeg",
+            },
+            body: thumbnailBlobResult.value,
+          });
+
+          if (!thumbnailUploadResponse.ok) {
+            console.log("thumbnailUploadResponse", thumbnailUploadResponse);
+            throw new Error("Failed to upload thumbnail to storage.");
+          }
+
+          thumbnailPath = thumbnailPresigned.key;
+        } catch (thumbError) {
+          console.error("Error uploading thumbnail to storage:", thumbError);
+        }
+      } else {
+        console.error(
+          "Error generating thumbnail blob:",
+          thumbnailBlobResult.reason
+        );
+      }
+
+      setUploadProgress(85);
+
+      // 4. Create panorama metadata (including thumbnailPath when available)
       await panoramaApi.createPanorama({
-        key: presigned.key,
+        key: originalPresigned.key,
         name: values.name,
         description: values.description,
         tags: values.tags,
         fileSize: file.size,
         mimeType: file.type || "image/jpeg",
+        thumbnailPath,
       });
 
       setUploadProgress(100);
       message.success("Panorama created successfully.");
       navigate("/panoramas");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating panorama:", error);
-      message.error(error?.message || "Failed to create panorama.");
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to create panorama.";
+      message.error(errorMessage);
       setUploadProgress(0);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const fileList: UploadFile[] = file
+    ? [
+        {
+          uid: file.uid,
+          name: file.name,
+          status: "done" as UploadFile["status"],
+        },
+      ]
+    : [];
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -147,17 +214,7 @@ const CreatePanoramaPage: React.FC = () => {
                     }
                   : false
               }
-              fileList={
-                file
-                  ? [
-                      {
-                        uid: file.uid,
-                        name: file.name,
-                        status: "done",
-                      } as any
-                  ]
-                  : []
-              }
+              fileList={fileList}
             >
               <p className="ant-upload-drag-icon">
                 <InboxOutlined />
@@ -172,8 +229,18 @@ const CreatePanoramaPage: React.FC = () => {
           </Form.Item>
 
           {uploadProgress > 0 && (
-            <Form.Item label="Upload progress">
-              <Progress percent={uploadProgress} status={submitting ? "active" : "normal"} />
+            <Form.Item>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 w-32">
+                  Uploading image
+                </span>
+                <Progress
+                  percent={uploadProgress}
+                  size="small"
+                  status={submitting ? "active" : "normal"}
+                  className="flex-1"
+                />
+              </div>
             </Form.Item>
           )}
 
@@ -187,7 +254,10 @@ const CreatePanoramaPage: React.FC = () => {
               >
                 Create panorama
               </Button>
-              <Button onClick={() => navigate("/panoramas")} disabled={submitting}>
+              <Button
+                onClick={() => navigate("/panoramas")}
+                disabled={submitting}
+              >
                 Cancel
               </Button>
             </Space>
@@ -199,5 +269,3 @@ const CreatePanoramaPage: React.FC = () => {
 };
 
 export default CreatePanoramaPage;
-
-

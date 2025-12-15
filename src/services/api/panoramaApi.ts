@@ -12,6 +12,11 @@ export interface Panorama {
   name: string;
   filename: string;
   filePath: string;
+  /**
+   * Optional path to a lightweight thumbnail image.
+   * When present, the UI should prefer this over filePath for grid views.
+   */
+  thumbnailPath?: string;
   fileSize: number;
   mimeType: string;
   isBookmarked: boolean;
@@ -40,8 +45,13 @@ export interface CreatePanoramaPayload {
   name: string;
   fileSize: number;
   mimeType: string;
+  thumbnailPath?: string;
   description?: string;
   tags?: string[];
+}
+
+export interface UpdateBookmarkPayload {
+  isBookmarked: boolean;
 }
 
 export const panoramaApi = {
@@ -67,6 +77,17 @@ export const panoramaApi = {
     payload: CreatePanoramaPayload
   ): Promise<Panorama> => {
     const response = await apiClient.post<Panorama>("/panorama", payload);
+    return response.data;
+  },
+
+  updateBookmark: async (
+    id: string,
+    payload: UpdateBookmarkPayload
+  ): Promise<Panorama> => {
+    const response = await apiClient.patch<Panorama>(
+      `/panorama/${id}/bookmark`,
+      payload
+    );
     return response.data;
   },
 
