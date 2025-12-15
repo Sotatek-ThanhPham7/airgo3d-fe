@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Row,
   Col,
@@ -14,8 +15,9 @@ import {
   Space,
   Input,
   Select,
+  Button,
 } from "antd";
-import { SearchOutlined, FilterOutlined } from "@ant-design/icons";
+import { SearchOutlined, FilterOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   panoramaApi,
   Panorama,
@@ -191,65 +193,75 @@ const PanoramaListPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4 items-center">
-            <div className="flex-1 w-full md:w-auto">
-              <Search
-                placeholder="Search images..."
-                allowClear
-                enterButton={<SearchOutlined />}
-                size="large"
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4 items-center">
+              <div className="flex-1 w-full md:w-auto">
+                <Search
+                  placeholder="Search images..."
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  size="large"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBookmarkToggle}
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
+                    ${
+                      showBookmarkedOnly
+                        ? "bg-blue-500 text-white shadow-md"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }
+                  `}
+                >
+                  {showBookmarkedOnly ? (
+                    <>
+                      <FaHeart className="text-red-400" />
+                      <span>Bookmarked</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaRegBookmark />
+                      <span>All Items</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="w-full md:w-64">
+                <Select
+                  mode="multiple"
+                  placeholder="Filter by Tags"
+                  size="large"
+                  value={selectedTags}
+                  onChange={handleTagChange}
+                  onSearch={setTagSearchQuery}
+                  showSearch
+                  filterOption={false}
+                  loading={tagLoading}
+                  allowClear
+                  maxTagCount="responsive"
+                  suffixIcon={<FilterOutlined />}
+                  className="w-full"
+                  options={tagOptions.map((tag) => ({
+                    label: tag.name,
+                    value: tag.name,
+                  }))}
+                />
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleBookmarkToggle}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
-                  ${
-                    showBookmarkedOnly
-                      ? "bg-blue-500 text-white shadow-md"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }
-                `}
-              >
-                {showBookmarkedOnly ? (
-                  <>
-                    <FaHeart className="text-red-400" />
-                    <span>Bookmarked</span>
-                  </>
-                ) : (
-                  <>
-                    <FaRegBookmark />
-                    <span>All Items</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="w-full md:w-64">
-              <Select
-                mode="multiple"
-                placeholder="Filter by Tags"
-                size="large"
-                value={selectedTags}
-                onChange={handleTagChange}
-                onSearch={setTagSearchQuery}
-                showSearch
-                filterOption={false}
-                loading={tagLoading}
-                allowClear
-                maxTagCount="responsive"
-                suffixIcon={<FilterOutlined />}
-                className="w-full"
-                options={tagOptions.map((tag) => ({
-                  label: tag.name,
-                  value: tag.name,
-                }))}
-              />
+            <div className="flex justify-end">
+              <Link to="/panoramas/new">
+                <Button type="primary" icon={<PlusOutlined />}>
+                  Create panorama
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

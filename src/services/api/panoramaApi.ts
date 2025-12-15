@@ -15,6 +15,7 @@ export interface Panorama {
   fileSize: number;
   mimeType: string;
   isBookmarked: boolean;
+  description?: string;
   createdAt: string;
   updatedAt: string;
   tags: PanoramaTag[];
@@ -34,6 +35,15 @@ export interface GetTagSuggestionsParams {
   limit?: number;
 }
 
+export interface CreatePanoramaPayload {
+  key: string;
+  name: string;
+  fileSize: number;
+  mimeType: string;
+  description?: string;
+  tags?: string[];
+}
+
 export const panoramaApi = {
   getPanoramas: async (
     params?: GetPanoramasParams
@@ -50,6 +60,13 @@ export const panoramaApi = {
         },
       }
     );
+    return response.data;
+  },
+
+  createPanorama: async (
+    payload: CreatePanoramaPayload
+  ): Promise<Panorama> => {
+    const response = await apiClient.post<Panorama>("/panorama", payload);
     return response.data;
   },
 
