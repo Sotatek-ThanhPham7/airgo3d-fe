@@ -11,6 +11,7 @@ import PanoramaListPage from "./pages/PanoramaListPage";
 import HomePage from "./pages/HomePage";
 import CreatePanoramaPage from "./pages/CreatePanoramaPage";
 import PanoramaViewerPage from "./pages/PanoramaViewerPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 const { Header, Content, Footer } = Layout;
 
@@ -21,6 +22,8 @@ const AppShell: React.FC = () => {
 
   const selectedKey = location.pathname.startsWith("/panoramas")
     ? "/panoramas"
+    : location.pathname.startsWith("/analytics")
+    ? "/analytics"
     : "/";
 
   const menuItems = [
@@ -31,6 +34,10 @@ const AppShell: React.FC = () => {
     {
       key: "/panoramas",
       label: <Link to="/panoramas">Panoramas</Link>,
+    },
+    {
+      key: "/analytics",
+      label: <Link to="/analytics">Analytics</Link>,
     },
   ];
 
@@ -87,6 +94,7 @@ const AppShell: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/panoramas" element={<PanoramaListPage />} />
           <Route path="/panoramas/new" element={<CreatePanoramaPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route
             path="*"
             element={

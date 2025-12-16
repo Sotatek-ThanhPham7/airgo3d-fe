@@ -24,6 +24,7 @@ import {
   SearchOutlined,
   FilterOutlined,
   PlusOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import {
   panoramaApi,
@@ -61,6 +62,7 @@ const PanoramaListPage: React.FC = () => {
   const [tagOptions, setTagOptions] = useState<PanoramaTag[]>([]);
   const [tagSearchQuery, setTagSearchQuery] = useState<string>("");
   const [tagLoading, setTagLoading] = useState<boolean>(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -226,6 +228,28 @@ const PanoramaListPage: React.FC = () => {
       );
 
       message.error("Failed to update bookmark. Please try again.");
+    }
+  };
+
+  const handleDownload = async (panorama: Panorama) => {
+    try {
+      setDownloadingId(panorama._id);
+      const { url } = await panoramaApi.getDownloadUrl(panorama._id);
+
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = panorama.filename || `${panorama.name}.jpg`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      message.success("Download started");
+    } catch (err) {
+      console.error("Failed to download panorama:", err);
+      message.error("Failed to get download link. Please try again.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -425,9 +449,25 @@ const PanoramaListPage: React.FC = () => {
                               ))}
                             </div>
                           )}
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div>Size: {formatFileSize(panorama.fileSize)}</div>
-                            <div>Created: {formatDate(panorama.createdAt)}</div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="space-y-1">
+                              <div>Size: {formatFileSize(panorama.fileSize)}</div>
+                              <div>Created: {formatDate(panorama.createdAt)}</div>
+                            </div>
+                            <Tooltip title="Download original image">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(panorama);
+                                }}
+                                disabled={downloadingId === panorama._id}
+                                className="ml-3 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 w-8 h-8 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-70 disabled:cursor-not-allowed transition"
+                                aria-label="Download panorama"
+                              >
+                                <DownloadOutlined className="text-blue-500 text-sm" />
+                              </button>
+                            </Tooltip>
                           </div>
                         </Space>
                       }
@@ -479,7 +519,6 @@ const PanoramaListPage: React.FC = () => {
           </div>
         )}
       </div>
-
     </div>
   );
 };
