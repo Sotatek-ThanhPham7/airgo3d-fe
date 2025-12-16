@@ -16,15 +16,22 @@ import {
   Input,
   Select,
   Button,
+  message,
+  Tooltip,
+  Empty,
 } from "antd";
-import { SearchOutlined, FilterOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  SearchOutlined,
+  FilterOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import {
   panoramaApi,
   Panorama,
   PanoramaTag,
 } from "../services/api/panoramaApi";
-import { getImageUrl } from "../services/api/config";
-import { FaBookmark, FaRegBookmark, FaHeart } from "react-icons/fa";
+import { getThumbnailUrl } from "../services/api/config";
+import { FaBookmark, FaRegBookmark } from "react-icons/fa";
 
 const { Text } = Typography;
 const { Search } = Input;
@@ -43,7 +50,9 @@ const PanoramaListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showBookmarkedOnly, setShowBookmarkedOnly] = useState<boolean>(false);
+  const [bookmarkFilter, setBookmarkFilter] = useState<
+    "all" | "bookmarked" | "unbookmarked"
+  >("all");
 
   const [tagOptions, setTagOptions] = useState<PanoramaTag[]>([]);
   const [tagSearchQuery, setTagSearchQuery] = useState<string>("");
@@ -104,8 +113,10 @@ const PanoramaListPage: React.FC = () => {
           params.tags = selectedTags;
         }
 
-        if (showBookmarkedOnly) {
+        if (bookmarkFilter === "bookmarked") {
           params.isBookmarked = true;
+        } else if (bookmarkFilter === "unbookmarked") {
+          params.isBookmarked = false;
         }
 
         const response = await panoramaApi.getPanoramas(params);
@@ -123,12 +134,12 @@ const PanoramaListPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [debouncedSearch, selectedTags, showBookmarkedOnly, pagination.limit]
+    [debouncedSearch, selectedTags, bookmarkFilter, pagination.limit]
   );
 
   useEffect(() => {
     fetchPanoramas(1);
-  }, [debouncedSearch, selectedTags, showBookmarkedOnly]);
+  }, [debouncedSearch, selectedTags, bookmarkFilter]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -140,13 +151,72 @@ const PanoramaListPage: React.FC = () => {
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  const handleBookmarkToggle = () => {
-    setShowBookmarkedOnly(!showBookmarkedOnly);
+  const handleBookmarkFilterChange = (
+    value: "all" | "bookmarked" | "unbookmarked"
+  ) => {
+    setBookmarkFilter(value);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const handlePageChange = (page: number) => {
     fetchPanoramas(page);
+  };
+
+  const handleBookmarkToggle = async (panorama: Panorama) => {
+    const nextIsBookmarked = !panorama.isBookmarked;
+
+    // Optimistic UI update
+    setPanoramas((prev) =>
+      prev.map((item) =>
+        item._id === panorama._id
+          ? { ...item, isBookmarked: nextIsBookmarked }
+          : item
+      )
+    );
+
+    try {
+      const updated = await panoramaApi.updateBookmark(panorama._id, {
+        isBookmarked: nextIsBookmarked,
+      });
+
+      setPanoramas((prev) =>
+        prev
+          .map((item) =>
+            item._id === updated._id
+              ? { ...item, isBookmarked: updated.isBookmarked }
+              : item
+          )
+          // Keep list consistent with current bookmark filter
+          .filter((item) => {
+            if (bookmarkFilter === "bookmarked") {
+              return item.isBookmarked;
+            }
+            if (bookmarkFilter === "unbookmarked") {
+              return !item.isBookmarked;
+            }
+            return true;
+          })
+      );
+
+      message.success(
+        updated.isBookmarked
+          ? "Panorama bookmarked."
+          : "Panorama removed from bookmarks."
+      );
+    } catch (err) {
+      console.error("Failed to update bookmark:", err);
+
+      // Revert optimistic update
+      setPanoramas((prev) =>
+        prev.map((item) =>
+          item._id === panorama._id
+            ? { ...item, isBookmarked: panorama.isBookmarked }
+            : item
+        )
+      );
+
+      message.error("Failed to update bookmark. Please try again.");
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -194,50 +264,37 @@ const PanoramaListPage: React.FC = () => {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
+            {/* Search + filters toolbar */}
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <div className="flex-1 w-full md:w-auto">
                 <Search
                   placeholder="Search images..."
                   allowClear
                   enterButton={<SearchOutlined />}
-                  size="large"
+                  size="middle"
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full"
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleBookmarkToggle}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200
-                    ${
-                      showBookmarkedOnly
-                        ? "bg-blue-500 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }
-                  `}
-                >
-                  {showBookmarkedOnly ? (
-                    <>
-                      <FaHeart className="text-red-400" />
-                      <span>Bookmarked</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaRegBookmark />
-                      <span>All Items</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <div className="flex w-full md:w-auto gap-2 justify-end">
+                <Select
+                  size="middle"
+                  className="w-40"
+                  value={bookmarkFilter}
+                  onChange={handleBookmarkFilterChange}
+                  options={[
+                    { label: "All items", value: "all" },
+                    { label: "Bookmarked", value: "bookmarked" },
+                    { label: "Unbookmarked", value: "unbookmarked" },
+                  ]}
+                />
 
-              <div className="w-full md:w-64">
                 <Select
                   mode="multiple"
-                  placeholder="Filter by Tags"
-                  size="large"
+                  placeholder="Filter by tags"
+                  size="middle"
                   value={selectedTags}
                   onChange={handleTagChange}
                   onSearch={setTagSearchQuery}
@@ -247,7 +304,7 @@ const PanoramaListPage: React.FC = () => {
                   allowClear
                   maxTagCount="responsive"
                   suffixIcon={<FilterOutlined />}
-                  className="w-full"
+                  className="w-48"
                   options={tagOptions.map((tag) => ({
                     label: tag.name,
                     value: tag.name,
@@ -256,6 +313,7 @@ const PanoramaListPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Primary action */}
             <div className="flex justify-end">
               <Link to="/panoramas/new">
                 <Button type="primary" icon={<PlusOutlined />}>
@@ -289,12 +347,13 @@ const PanoramaListPage: React.FC = () => {
                 <Col key={panorama._id} xs={24} sm={12} md={8} lg={6} xl={6}>
                   <Card
                     hoverable
-                    className="h-full shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                    className="h-full rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-200"
+                    bodyStyle={{ padding: 12 }}
                     cover={
                       <div className="relative h-48 bg-gray-200 overflow-hidden p-0 m-0">
                         <Image
                           alt={panorama.name}
-                          src={getImageUrl(panorama.filePath)}
+                          src={getThumbnailUrl(panorama.thumbnailPath ?? "")}
                           className="object-cover w-full h-full"
                           style={{
                             display: "block",
@@ -303,20 +362,30 @@ const PanoramaListPage: React.FC = () => {
                           }}
                           preview={false}
                           rootClassName="w-full h-full"
+                          loading="lazy"
                         />
-                        {panorama.isBookmarked ? (
-                          <div className="absolute top-2 right-2">
-                            <FaBookmark
-                              style={{ fontSize: "24px", color: "#ef4444" }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="absolute top-2 right-2">
-                            <FaRegBookmark
-                              style={{ fontSize: "24px", color: "#9ca3af" }}
-                            />
-                          </div>
-                        )}
+                        <Tooltip
+                          title={
+                            panorama.isBookmarked
+                              ? "Remove bookmark"
+                              : "Add to bookmarks"
+                          }
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBookmarkToggle(panorama);
+                            }}
+                            className="absolute top-2 right-2 flex items-center justify-center rounded-full bg-white/90 px-2 py-1 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition"
+                          >
+                            {panorama.isBookmarked ? (
+                              <FaBookmark className="text-red-500 text-lg" />
+                            ) : (
+                              <FaRegBookmark className="text-gray-400 text-lg" />
+                            )}
+                          </button>
+                        </Tooltip>
                       </div>
                     }
                   >
@@ -358,10 +427,19 @@ const PanoramaListPage: React.FC = () => {
             </Row>
 
             {panoramas.length === 0 && !loading && (
-              <div className="text-center py-12">
-                <Text type="secondary" className="text-lg">
-                  No panoramas found
-                </Text>
+              <div className="py-16">
+                <Empty
+                  description={
+                    <span className="text-gray-500">
+                      No panoramas found. Try changing filters or create a new
+                      one.
+                    </span>
+                  }
+                >
+                  <Link to="/panoramas/new">
+                    <Button type="primary">Create panorama</Button>
+                  </Link>
+                </Empty>
               </div>
             )}
           </>

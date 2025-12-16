@@ -12,6 +12,19 @@ export const getImageUrl = (filePath: string): string => {
   return `${S3_BASE_URL}/${cleanPath}`;
 };
 
+/**
+ * Build a URL for a thumbnail image.
+ * By default this assumes thumbnails live alongside originals and use the same base URL.
+ * If your backend uses a different prefix (e.g. `thumbnails/`), adapt the path logic here.
+ */
+export const getThumbnailUrl = (thumbnailPath: string): string => {
+  if (!thumbnailPath) return "";
+  const cleanPath = thumbnailPath.startsWith("/")
+    ? thumbnailPath.slice(1)
+    : thumbnailPath;
+  return `${S3_BASE_URL}/${cleanPath}`;
+};
+
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 30000,
