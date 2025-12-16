@@ -54,6 +54,40 @@ export interface UpdateBookmarkPayload {
   isBookmarked: boolean;
 }
 
+export interface GetAnalyticsParams {
+  startDate: string;
+  endDate: string;
+  period: "day" | "week" | "month";
+}
+
+export interface AnalyticsSummary {
+  totalImages: number;
+  bookmarkedCount: number;
+  unbookmarkedCount: number;
+  bookmarkedPercentage: number;
+  unbookmarkedPercentage: number;
+}
+
+export interface TimeSeriesDataPoint {
+  bookmarked: number;
+  unbookmarked: number;
+  total: number;
+  date: string;
+}
+
+export interface AnalyticsResponse {
+  summary: AnalyticsSummary;
+  timeSeries: TimeSeriesDataPoint[];
+  period: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface DownloadUrlResponse {
+  url: string;
+  expiresIn: number;
+}
+
 export const panoramaApi = {
   getPanoramas: async (
     params?: GetPanoramasParams
@@ -73,9 +107,7 @@ export const panoramaApi = {
     return response.data;
   },
 
-  createPanorama: async (
-    payload: CreatePanoramaPayload
-  ): Promise<Panorama> => {
+  createPanorama: async (payload: CreatePanoramaPayload): Promise<Panorama> => {
     const response = await apiClient.post<Panorama>("/panorama", payload);
     return response.data;
   },
@@ -103,6 +135,29 @@ export const panoramaApi = {
           limit: params?.limit ?? 10,
         },
       }
+    );
+    return response.data;
+  },
+
+  getAnalytics: async (
+    params: GetAnalyticsParams
+  ): Promise<AnalyticsResponse> => {
+    const response = await apiClient.get<AnalyticsResponse>(
+      "/panorama/analytics",
+      {
+        params: {
+          startDate: params.startDate,
+          endDate: params.endDate,
+          period: params.period,
+        },
+      }
+    );
+    return response.data;
+  },
+
+  getDownloadUrl: async (id: string): Promise<DownloadUrlResponse> => {
+    const response = await apiClient.get<DownloadUrlResponse>(
+      `/panorama/${id}/download-url`
     );
     return response.data;
   },

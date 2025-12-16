@@ -10,14 +10,20 @@ import { Layout, Menu, Result } from "antd";
 import PanoramaListPage from "./pages/PanoramaListPage";
 import HomePage from "./pages/HomePage";
 import CreatePanoramaPage from "./pages/CreatePanoramaPage";
+import PanoramaViewerPage from "./pages/PanoramaViewerPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 const { Header, Content, Footer } = Layout;
 
 const AppShell: React.FC = () => {
   const location = useLocation();
 
+  const isViewerRoute = location.pathname === "/panoramas/viewer";
+
   const selectedKey = location.pathname.startsWith("/panoramas")
     ? "/panoramas"
+    : location.pathname.startsWith("/analytics")
+    ? "/analytics"
     : "/";
 
   const menuItems = [
@@ -29,7 +35,31 @@ const AppShell: React.FC = () => {
       key: "/panoramas",
       label: <Link to="/panoramas">Panoramas</Link>,
     },
+    {
+      key: "/analytics",
+      label: <Link to="/analytics">Analytics</Link>,
+    },
   ];
+
+  if (isViewerRoute) {
+    // Fullscreen viewer without header/footer/layout padding
+    return (
+      <Routes>
+        <Route path="/panoramas/viewer" element={<PanoramaViewerPage />} />
+        <Route
+          path="*"
+          element={
+            <Result
+              status="404"
+              title="404"
+              subTitle="Sorry, the page you visited does not exist."
+              extra={<Link to="/">Back Home</Link>}
+            />
+          }
+        />
+      </Routes>
+    );
+  }
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -64,6 +94,7 @@ const AppShell: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/panoramas" element={<PanoramaListPage />} />
           <Route path="/panoramas/new" element={<CreatePanoramaPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route
             path="*"
             element={

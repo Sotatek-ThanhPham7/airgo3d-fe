@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Row,
   Col,
@@ -24,19 +24,24 @@ import {
   SearchOutlined,
   FilterOutlined,
   PlusOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import {
   panoramaApi,
   Panorama,
   PanoramaTag,
 } from "../services/api/panoramaApi";
-import { getThumbnailUrl } from "../services/api/config";
+import { getImageUrl, getThumbnailUrl } from "../services/api/config";
 import { FaBookmark, FaRegBookmark } from "react-icons/fa";
+import { useAppDispatch } from "../store/hooks";
+import { setViewerImageUrl } from "../store/viewerSlice";
 
 const { Text } = Typography;
 const { Search } = Input;
 
 const PanoramaListPage: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [panoramas, setPanoramas] = useState<Panorama[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +62,7 @@ const PanoramaListPage: React.FC = () => {
   const [tagOptions, setTagOptions] = useState<PanoramaTag[]>([]);
   const [tagSearchQuery, setTagSearchQuery] = useState<string>("");
   const [tagLoading, setTagLoading] = useState<boolean>(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -162,6 +168,12 @@ const PanoramaListPage: React.FC = () => {
     fetchPanoramas(page);
   };
 
+  const handleOpenViewer = (panorama: Panorama) => {
+    const imageUrl = getImageUrl(panorama.filePath);
+    dispatch(setViewerImageUrl(imageUrl));
+    navigate("/panoramas/viewer");
+  };
+
   const handleBookmarkToggle = async (panorama: Panorama) => {
     const nextIsBookmarked = !panorama.isBookmarked;
 
@@ -216,6 +228,28 @@ const PanoramaListPage: React.FC = () => {
       );
 
       message.error("Failed to update bookmark. Please try again.");
+    }
+  };
+
+  const handleDownload = async (panorama: Panorama) => {
+    try {
+      setDownloadingId(panorama._id);
+      const { url } = await panoramaApi.getDownloadUrl(panorama._id);
+
+      const link = document.createElement("a");
+      link.href = url;
+      const fileName = panorama.filename || `${panorama.name}.jpg`;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      message.success("Download started");
+    } catch (err) {
+      console.error("Failed to download panorama:", err);
+      message.error("Failed to get download link. Please try again.");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -347,7 +381,8 @@ const PanoramaListPage: React.FC = () => {
                 <Col key={panorama._id} xs={24} sm={12} md={8} lg={6} xl={6}>
                   <Card
                     hoverable
-                    className="h-full rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-200"
+                    onClick={() => handleOpenViewer(panorama)}
+                    className="h-full rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
                     bodyStyle={{ padding: 12 }}
                     cover={
                       <div className="relative h-48 bg-gray-200 overflow-hidden p-0 m-0">
@@ -414,9 +449,25 @@ const PanoramaListPage: React.FC = () => {
                               ))}
                             </div>
                           )}
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <div>Size: {formatFileSize(panorama.fileSize)}</div>
-                            <div>Created: {formatDate(panorama.createdAt)}</div>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="space-y-1">
+                              <div>Size: {formatFileSize(panorama.fileSize)}</div>
+                              <div>Created: {formatDate(panorama.createdAt)}</div>
+                            </div>
+                            <Tooltip title="Download original image">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDownload(panorama);
+                                }}
+                                disabled={downloadingId === panorama._id}
+                                className="ml-3 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 w-8 h-8 shadow-sm hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-70 disabled:cursor-not-allowed transition"
+                                aria-label="Download panorama"
+                              >
+                                <DownloadOutlined className="text-blue-500 text-sm" />
+                              </button>
+                            </Tooltip>
                           </div>
                         </Space>
                       }
