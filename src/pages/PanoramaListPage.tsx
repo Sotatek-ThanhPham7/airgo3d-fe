@@ -35,6 +35,7 @@ import { getImageUrl, getThumbnailUrl } from "../services/api/config";
 import { FaBookmark, FaRegBookmark } from "react-icons/fa";
 import { useAppDispatch } from "../store/hooks";
 import { setViewerImageUrl } from "../store/viewerSlice";
+import { useDebounce } from "hooks/useDebounce";
 
 const { Text } = Typography;
 const { Search } = Input;
@@ -53,7 +54,7 @@ const PanoramaListPage: React.FC = () => {
   });
 
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [bookmarkFilter, setBookmarkFilter] = useState<
     "all" | "bookmarked" | "unbookmarked"
@@ -63,14 +64,6 @@ const PanoramaListPage: React.FC = () => {
   const [tagSearchQuery, setTagSearchQuery] = useState<string>("");
   const [tagLoading, setTagLoading] = useState<boolean>(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const fetchTagSuggestions = useCallback(async (search: string = "") => {
     setTagLoading(true);
@@ -451,8 +444,12 @@ const PanoramaListPage: React.FC = () => {
                           )}
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <div className="space-y-1">
-                              <div>Size: {formatFileSize(panorama.fileSize)}</div>
-                              <div>Created: {formatDate(panorama.createdAt)}</div>
+                              <div>
+                                Size: {formatFileSize(panorama.fileSize)}
+                              </div>
+                              <div>
+                                Created: {formatDate(panorama.createdAt)}
+                              </div>
                             </div>
                             <Tooltip title="Download original image">
                               <button
