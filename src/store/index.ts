@@ -1,8 +1,9 @@
 import { configureStore } from "@reduxjs/toolkit";
+import viewerReducer from "./viewerSlice";
 
 export const store = configureStore({
   reducer: {
-    // Add more reducers here as your app grows
+    viewer: viewerReducer,
   },
   // Enable Redux DevTools in development
   devTools: process.env.NODE_ENV !== "production",

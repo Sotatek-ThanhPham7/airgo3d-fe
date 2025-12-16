@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as React from "react";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Row,
   Col,
@@ -30,13 +30,17 @@ import {
   Panorama,
   PanoramaTag,
 } from "../services/api/panoramaApi";
-import { getThumbnailUrl } from "../services/api/config";
+import { getImageUrl, getThumbnailUrl } from "../services/api/config";
 import { FaBookmark, FaRegBookmark } from "react-icons/fa";
+import { useAppDispatch } from "../store/hooks";
+import { setViewerImageUrl } from "../store/viewerSlice";
 
 const { Text } = Typography;
 const { Search } = Input;
 
 const PanoramaListPage: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [panoramas, setPanoramas] = useState<Panorama[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,6 +164,12 @@ const PanoramaListPage: React.FC = () => {
 
   const handlePageChange = (page: number) => {
     fetchPanoramas(page);
+  };
+
+  const handleOpenViewer = (panorama: Panorama) => {
+    const imageUrl = getImageUrl(panorama.filePath);
+    dispatch(setViewerImageUrl(imageUrl));
+    navigate("/panoramas/viewer");
   };
 
   const handleBookmarkToggle = async (panorama: Panorama) => {
@@ -347,7 +357,8 @@ const PanoramaListPage: React.FC = () => {
                 <Col key={panorama._id} xs={24} sm={12} md={8} lg={6} xl={6}>
                   <Card
                     hoverable
-                    className="h-full rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-200"
+                    onClick={() => handleOpenViewer(panorama)}
+                    className="h-full rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition-shadow duration-200 cursor-pointer"
                     bodyStyle={{ padding: 12 }}
                     cover={
                       <div className="relative h-48 bg-gray-200 overflow-hidden p-0 m-0">
@@ -468,6 +479,7 @@ const PanoramaListPage: React.FC = () => {
           </div>
         )}
       </div>
+
     </div>
   );
 };

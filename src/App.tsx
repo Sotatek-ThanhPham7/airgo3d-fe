@@ -10,11 +10,14 @@ import { Layout, Menu, Result } from "antd";
 import PanoramaListPage from "./pages/PanoramaListPage";
 import HomePage from "./pages/HomePage";
 import CreatePanoramaPage from "./pages/CreatePanoramaPage";
+import PanoramaViewerPage from "./pages/PanoramaViewerPage";
 
 const { Header, Content, Footer } = Layout;
 
 const AppShell: React.FC = () => {
   const location = useLocation();
+
+  const isViewerRoute = location.pathname === "/panoramas/viewer";
 
   const selectedKey = location.pathname.startsWith("/panoramas")
     ? "/panoramas"
@@ -30,6 +33,26 @@ const AppShell: React.FC = () => {
       label: <Link to="/panoramas">Panoramas</Link>,
     },
   ];
+
+  if (isViewerRoute) {
+    // Fullscreen viewer without header/footer/layout padding
+    return (
+      <Routes>
+        <Route path="/panoramas/viewer" element={<PanoramaViewerPage />} />
+        <Route
+          path="*"
+          element={
+            <Result
+              status="404"
+              title="404"
+              subTitle="Sorry, the page you visited does not exist."
+              extra={<Link to="/">Back Home</Link>}
+            />
+          }
+        />
+      </Routes>
+    );
+  }
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
