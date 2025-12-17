@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Form,
@@ -14,8 +14,9 @@ import {
 } from "antd";
 import type { RcFile, UploadFile } from "antd/es/upload";
 import { InboxOutlined } from "@ant-design/icons";
-import { s3Api, panoramaApi } from "../services/api";
+import { s3Api, panoramaApi, PanoramaTag } from "../services/api";
 import { generateThumbnailBlob } from "../utils/imageHandler";
+import { useDebounce } from "../hooks/useDebounce";
 
 const { Title, Paragraph } = Typography;
 const { Dragger } = Upload;
@@ -23,14 +24,41 @@ const { Dragger } = Upload;
 interface CreatePanoramaFormValues {
   name: string;
   description?: string;
-  tags?: string[];
+  tags?: string[]; // Array of tag IDs (for existing) or tag names (for new)
 }
 
 const CreatePanoramaPage: React.FC = () => {
   const [file, setFile] = useState<RcFile | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [tagOptions, setTagOptions] = useState<PanoramaTag[]>([]);
+  const [tagSearchQuery, setTagSearchQuery] = useState<string>("");
+  const [tagLoading, setTagLoading] = useState<boolean>(false);
+  // Track tag IDs that were selected from dropdown (have label and value)
+  const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
+  const debouncedTagSearch = useDebounce(tagSearchQuery, 300);
+
+  const fetchTagSuggestions = useCallback(async (search: string = "") => {
+    setTagLoading(true);
+    try {
+      const response = await panoramaApi.getTagSuggestions({
+        q: search,
+        page: 1,
+        limit: 50,
+      });
+      setTagOptions(response.data);
+    } catch (err: any) {
+      console.error("Error fetching tag suggestions:", err);
+      setTagOptions([]);
+    } finally {
+      setTagLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTagSuggestions(debouncedTagSearch);
+  }, [debouncedTagSearch, fetchTagSuggestions]);
 
   const handleBeforeUpload = (file: RcFile) => {
     setFile(file);
@@ -124,12 +152,47 @@ const CreatePanoramaPage: React.FC = () => {
 
       setUploadProgress(85);
 
-      // 4. Create panorama metadata (including thumbnailPath when available)
+      // 4. Separate existing tags (IDs) from new tags (names)
+      // If tag was selected from dropdown (has label and value), it's in selectedTagIds
+      // If tag was typed by user, check if it matches an existing tag name
+      const existingTagIds: string[] = [];
+      const newTagNames: string[] = [];
+
+      if (values.tags && values.tags.length > 0) {
+        // map: name -> id
+        const tagNameToIdMap = new Map(
+          tagOptions.map((tag) => [tag.name.toLowerCase(), tag._id])
+        );
+
+        values.tags.forEach((tagValue) => {
+          const tagStr = String(tagValue).trim();
+
+          if (tagStr.length === 0) return;
+
+          // select from recommendations
+          if (selectedTagIds.has(tagStr)) {
+            if (!existingTagIds.includes(tagStr)) {
+              existingTagIds.push(tagStr);
+            }
+            // select new tag but same name
+          } else if (tagNameToIdMap.has(tagStr.toLowerCase())) {
+            const existingId = tagNameToIdMap.get(tagStr.toLowerCase());
+            if (existingId && !existingTagIds.includes(existingId)) {
+              existingTagIds.push(existingId);
+            }
+            // create new tag
+          } else {
+            newTagNames.push(tagStr);
+          }
+        });
+      }
+
       await panoramaApi.createPanorama({
         key: originalPresigned.key,
         name: values.name,
         description: values.description,
-        tags: values.tags,
+        existingTags: existingTagIds.length > 0 ? existingTagIds : undefined,
+        newTags: newTagNames.length > 0 ? newTagNames : undefined,
         fileSize: file.size,
         mimeType: file.type || "image/jpeg",
         thumbnailPath,
@@ -193,7 +256,31 @@ const CreatePanoramaPage: React.FC = () => {
           <Form.Item label="Tags" name="tags">
             <Select
               mode="tags"
-              placeholder="Add tags (press Enter after each tag)"
+              placeholder="Search or add tags (press Enter after each tag)"
+              showSearch
+              onSearch={setTagSearchQuery}
+              filterOption={false}
+              loading={tagLoading}
+              options={tagOptions.map((tag) => ({
+                label: tag.name,
+                value: tag._id,
+              }))}
+              tokenSeparators={[","]}
+              onSelect={(value: string) => {
+                // select from recommendations
+                const tagExists = tagOptions.some((tag) => tag._id === value);
+                if (tagExists) {
+                  setSelectedTagIds((prev) => new Set(prev).add(value));
+                }
+              }}
+              onDeselect={(value: string) => {
+                // remove from selected tags
+                setSelectedTagIds((prev) => {
+                  const newSet = new Set(prev);
+                  newSet.delete(value);
+                  return newSet;
+                });
+              }}
             />
           </Form.Item>
 

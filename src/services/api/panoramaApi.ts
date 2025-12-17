@@ -47,7 +47,8 @@ export interface CreatePanoramaPayload {
   mimeType: string;
   thumbnailPath?: string;
   description?: string;
-  tags?: string[];
+  existingTags?: string[]; // Array of tag ObjectIds
+  newTags?: string[]; // Array of new tag names to create
 }
 
 export interface UpdateBookmarkPayload {
@@ -55,8 +56,8 @@ export interface UpdateBookmarkPayload {
 }
 
 export interface GetAnalyticsParams {
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
   period: "day" | "week" | "month";
 }
 
@@ -142,14 +143,21 @@ export const panoramaApi = {
   getAnalytics: async (
     params: GetAnalyticsParams
   ): Promise<AnalyticsResponse> => {
+    const queryParams: Record<string, string> = {
+      period: params.period,
+    };
+    
+    if (params.startDate) {
+      queryParams.startDate = params.startDate;
+    }
+    if (params.endDate) {
+      queryParams.endDate = params.endDate;
+    }
+
     const response = await apiClient.get<AnalyticsResponse>(
       "/panorama/analytics",
       {
-        params: {
-          startDate: params.startDate,
-          endDate: params.endDate,
-          period: params.period,
-        },
+        params: queryParams,
       }
     );
     return response.data;
