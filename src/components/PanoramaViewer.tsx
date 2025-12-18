@@ -4,13 +4,9 @@ import * as THREE from "three";
 
 interface PanoramaViewerProps {
   imageUrl: string;
-  onError?: (error: Error) => void;
 }
 
-const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
-  imageUrl,
-  onError,
-}) => {
+const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -90,9 +86,6 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       (error) => {
         console.error("Error loading panorama texture:", error);
         setIsLoading(false);
-        if (onError) {
-          onError(new Error("Failed to load panorama image"));
-        }
       }
     );
 
@@ -253,7 +246,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         }
       }
     };
-  }, [imageUrl, onError]);
+  }, [imageUrl]);
 
   return (
     <div

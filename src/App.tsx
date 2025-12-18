@@ -20,11 +20,13 @@ const AppShell: React.FC = () => {
 
   const isViewerRoute = location.pathname === "/panoramas/viewer";
 
-  const selectedKey = location.pathname.startsWith("/panoramas")
-    ? "/panoramas"
-    : location.pathname.startsWith("/analytics")
-    ? "/analytics"
-    : "/";
+  const getSelectedKey = (path: string) => {
+    if (path.startsWith("/panoramas")) return "/panoramas";
+    if (path.startsWith("/analytics")) return "/analytics";
+    return "/";
+  };
+
+  const selectedKey = getSelectedKey(location.pathname);
 
   const menuItems = [
     {

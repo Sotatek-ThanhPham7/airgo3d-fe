@@ -34,28 +34,34 @@ const AnalyticsPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>([
     dayjs().subtract(30, "day"),
     dayjs(),
   ]);
   const [period, setPeriod] = useState<"day" | "week" | "month">("day");
 
   const fetchAnalytics = useCallback(async () => {
-    if (!dateRange[0] || !dateRange[1]) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      // Format dates as ISO strings
-      const startDate = dateRange[0].startOf("day").toISOString();
-      const endDate = dateRange[1].endOf("day").toISOString();
-
-      const response = await panoramaApi.getAnalytics({
-        startDate,
-        endDate,
+      // Build params object - only include dates if dateRange is set
+      const params: {
+        startDate?: string;
+        endDate?: string;
+        period: "day" | "week" | "month";
+      } = {
         period,
-      });
+      };
+
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        // Format dates as ISO strings
+        params.startDate = dateRange[0].startOf("day").toISOString();
+        params.endDate = dateRange[1].endOf("day").toISOString();
+      }
+      // If dateRange is null, don't include startDate/endDate - API will return all records
+
+      const response = await panoramaApi.getAnalytics(params);
 
       setAnalytics(response);
     } catch (err: any) {
@@ -75,6 +81,9 @@ const AnalyticsPage: React.FC = () => {
   ) => {
     if (dates && dates[0] && dates[1]) {
       setDateRange([dates[0], dates[1]]);
+    } else {
+      // Clear date range - API will be called without date filters to show all records
+      setDateRange(null);
     }
   };
 
@@ -128,7 +137,7 @@ const AnalyticsPage: React.FC = () => {
                   value={dateRange}
                   onChange={handleDateRangeChange}
                   format="YYYY-MM-DD"
-                  allowClear={false}
+                  allowClear={true}
                 />
               </div>
               <div>
