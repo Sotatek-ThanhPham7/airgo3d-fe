@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 interface PanoramaViewerProps {
@@ -22,7 +22,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
   const rotationRef = useRef({ x: 0, y: 0 });
-  const [cursor, setCursor] = React.useState<"grab" | "grabbing">("grab");
+  const [cursor, setCursor] = useState<"grab" | "grabbing">("grab");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -68,6 +69,9 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         scene.add(sphere);
         sphereRef.current = sphere;
 
+        // Hide loading spinner
+        setIsLoading(false);
+
         // Start animation loop
         const animate = () => {
           animationFrameRef.current = requestAnimationFrame(animate);
@@ -85,6 +89,7 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
       undefined,
       (error) => {
         console.error("Error loading panorama texture:", error);
+        setIsLoading(false);
         if (onError) {
           onError(new Error("Failed to load panorama image"));
         }
@@ -260,7 +265,43 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({
         overflow: "hidden",
         cursor: cursor,
       }}
-    />
+    >
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "5px solid rgba(255, 255, 255, 0.3)",
+              borderTop: "5px solid #ffffff",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+        </div>
+      )}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+    </div>
   );
 };
 
