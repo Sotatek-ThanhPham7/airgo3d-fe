@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 interface PanoramaViewerProps {
@@ -18,7 +18,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
   const isDraggingRef = useRef(false);
   const previousMousePositionRef = useRef({ x: 0, y: 0 });
   const rotationRef = useRef({ x: 0, y: 0 });
-  const [cursor, setCursor] = React.useState<"grab" | "grabbing">("grab");
+  const [cursor, setCursor] = useState<"grab" | "grabbing">("grab");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -64,6 +65,8 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
         scene.add(sphere);
         sphereRef.current = sphere;
 
+        setIsLoading(false);
+
         // Start animation loop
         const animate = () => {
           animationFrameRef.current = requestAnimationFrame(animate);
@@ -81,10 +84,10 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
       undefined,
       (error) => {
         console.error("Error loading panorama texture:", error);
+        setIsLoading(false);
       }
     );
 
-    // Mouse event handlers
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 0) {
         isDraggingRef.current = true;
@@ -122,44 +125,6 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
       setCursor("grab");
     };
 
-    // Touch event handlers
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        isDraggingRef.current = true;
-        previousMousePositionRef.current = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-        };
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (!isDraggingRef.current || e.touches.length !== 1) return;
-      e.preventDefault();
-
-      const deltaX = e.touches[0].clientX - previousMousePositionRef.current.x;
-      const deltaY = e.touches[0].clientY - previousMousePositionRef.current.y;
-
-      rotationRef.current.y -= deltaX * 0.005;
-      rotationRef.current.x -= deltaY * 0.005;
-
-      // Limit vertical rotation
-      rotationRef.current.x = Math.max(
-        -Math.PI / 2,
-        Math.min(Math.PI / 2, rotationRef.current.x)
-      );
-
-      previousMousePositionRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-      };
-    };
-
-    const handleTouchEnd = () => {
-      isDraggingRef.current = false;
-    };
-
-    // Wheel event handler for zoom
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (!camera) return;
@@ -190,36 +155,25 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
       renderer.setSize(newWidth, newHeight);
     };
 
-    // Add event listeners
     container.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     container.addEventListener("wheel", handleWheel, { passive: false });
-    container.addEventListener("touchstart", handleTouchStart);
-    container.addEventListener("touchmove", handleTouchMove, {
-      passive: false,
-    });
-    container.addEventListener("touchend", handleTouchEnd);
     window.addEventListener("resize", handleResize);
 
-    // Cleanup function
+    // for the cleanup
     return () => {
-      // Cancel animation frame
       if (animationFrameRef.current !== null) {
         cancelAnimationFrame(animationFrameRef.current);
       }
 
-      // Remove event listeners
       container.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
       container.removeEventListener("wheel", handleWheel);
-      container.removeEventListener("touchstart", handleTouchStart);
-      container.removeEventListener("touchmove", handleTouchMove);
-      container.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("resize", handleResize);
 
-      // Clean up Three.js resources
+      // clean up Three.js resources
       if (sphereRef.current) {
         if (sphereRef.current.geometry) {
           sphereRef.current.geometry.dispose();
@@ -253,7 +207,43 @@ const PanoramaViewer: React.FC<PanoramaViewerProps> = ({ imageUrl }) => {
         overflow: "hidden",
         cursor: cursor,
       }}
-    />
+    >
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "5px solid rgba(255, 255, 255, 0.3)",
+              borderTop: "5px solid #ffffff",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+        </div>
+      )}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+    </div>
   );
 };
 

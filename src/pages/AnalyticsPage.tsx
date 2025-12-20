@@ -45,7 +45,6 @@ const AnalyticsPage: React.FC = () => {
     setError(null);
 
     try {
-      // Build params object - only include dates if dateRange is set
       const params: {
         startDate?: string;
         endDate?: string;
@@ -55,11 +54,9 @@ const AnalyticsPage: React.FC = () => {
       };
 
       if (dateRange && dateRange[0] && dateRange[1]) {
-        // Format dates as ISO strings
         params.startDate = dateRange[0].startOf("day").toISOString();
         params.endDate = dateRange[1].endOf("day").toISOString();
       }
-      // If dateRange is null, don't include startDate/endDate - API will return all records
 
       const response = await panoramaApi.getAnalytics(params);
 
@@ -82,7 +79,6 @@ const AnalyticsPage: React.FC = () => {
     if (dates && dates[0] && dates[1]) {
       setDateRange([dates[0], dates[1]]);
     } else {
-      // Clear date range - API will be called without date filters to show all records
       setDateRange(null);
     }
   };
@@ -94,14 +90,11 @@ const AnalyticsPage: React.FC = () => {
   const formatChartDate = (dateString: string): string => {
     switch (period) {
       case "day":
-        // Format day as "MMM DD" for readability
         const date = dayjs(dateString);
         return date.format("MMM DD");
       case "week":
-        // Use week format as-is from API: "2025-W51"
         return dateString;
       case "month":
-        // Use month format as-is from API: "2025-12"
         return dateString;
       default:
         const defaultDate = dayjs(dateString);
@@ -236,7 +229,7 @@ const AnalyticsPage: React.FC = () => {
                     <XAxis
                       dataKey="date"
                       tick={{ fontSize: 12 }}
-                      angle={period === "day" ? -45 : 0}
+                      angle={period === "day" ? -45 : 0} // for day, rotate in case of a lot of display days 
                       textAnchor={period === "day" ? "end" : "middle"}
                       height={period === "day" ? 80 : 40}
                       interval={period === "month" ? 0 : "preserveStartEnd"}
